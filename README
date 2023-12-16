@@ -1,1 +1,1 @@
-put single cell sequencing fastq files to input directory, check the help page of single_cell.sh to know how to use it, run it with proper number of threads and memory, analyzed files will be in specified output directory. 
+Check the help page of single_cell.sh to know how to use it. Specify path to your single cell sequencing fastq files, and other parameters, e.g. ouput, threads, memory, primers, barcodes etc., analyzed files will be in specified output directory. 
