@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# qsub -W group_list=cge -A cge -l nodes=1:ppn=40,mem=50g,walltime=40:00:00 sc.queue.sh
+
 ################################################################################################################
 ############################################## help page #######################################################
 Help()
@@ -15,8 +17,8 @@ Help()
    echo "--barcode2 Necessary. The barcode2.fasta file path. The barcode2 is the one 2nd closest to the reads end."
    echo "--barcode3 Necessary. The barcode3.fasta file path. The barcode3 is the one 3rd closest to the reads end."
    echo "--primer  Necessary. The primer fasta file path."
-   echo "--minimal_reads_number   Optional. The minimal number of reads R1+R2"
-   echo "--maximal_reads_number   Optional. The maximal number of reads R1+R2"
+   echo "--minimal_reads_number   Optional. The minimal number of reads R1+R2, a value or "". "
+   echo "--maximal_reads_number   Optional. The maximal number of reads R1+R2, a value or "". "
    echo "-t|--threads   Necessary. Number of threads to use"   
    echo "--trimmomatic_quality  Optional. The quality score for trimmomatic windows."
    echo "--memory   If use "--memory", you will specify the memory to be used (GB)"   
@@ -186,7 +188,6 @@ if [[ ! -d $out_demtx ]]; then
 
   parallel_cutadapt1(){
     fastq1=$1
-    ehco $fastq1
     fastq2=$(echo $fastq1|sed 's|R1.fastq|R2.fastq|')
     sample=$(basename $fastq1|cut -d_ -f1)
     barcode_name=$(basename $parallel_parameter_b1|cut -d. -f1)
@@ -199,33 +200,31 @@ if [[ ! -d $out_demtx ]]; then
   parallel -j $parameter_t parallel_cutadapt1 ::: $parameter_i/*R1*
   
   parallel_cutadapt2(){
-    fastq1={1}
-    ehco $fastq1
+    fastq1=$1
     fastq2=$(echo $fastq1|sed 's|R1.fastq|R2.fastq|')
     sample=$(basename $fastq1|cut -d_ -f1)
-    barcode_name=$(basename $parallel_parameter_b1|cut -d. -f1)
-    $parallel_cutadapt_path --action trim -e 0 --cores 1 -g file:$parallel_parameter_b1 -o $parallel_out_demtx/barcode1/${sample}-{name}_R2.fastq -p $parallel_out_demtx/barcode1/${sample}-{name}_R1.fastq $fastq2 $fastq1 >> $parallel_out_demtx/barcode1/${barcode_name}.log 2>&1  
+    barcode_name=$(basename $parallel_parameter_b2|cut -d. -f1)
+    $parallel_cutadapt_path --action trim -e 0 --cores 1 -g file:$parallel_parameter_b2 -o $parallel_out_demtx/barcode2/${sample}+{name}_R2.fastq -p $parallel_out_demtx/barcode2/${sample}+{name}_R1.fastq $fastq2 $fastq1 >> $parallel_out_demtx/barcode2/${barcode_name}.log 2>&1  
     }
-  export parallel_parameter_b1=$parameter_b1
+  export parallel_parameter_b2=$parameter_b2
   export parallel_cutadapt_path=$cutadapt_path 
   export parallel_out_demtx=$out_demtx
-  export -f parallel_cutadapt1
-  ls -lhS "$out_demtx/barcode1/*|grep -v 'unknown'|awk '$5 != 0 {print $9}' > $out_demtx/demultiplexing.barcode1.fastq # to skip zero reads files
+  export -f parallel_cutadapt2
+  ls -lhS $out_demtx/barcode1/*|grep 'R1.fastq'|grep -v 'unknown'|awk '$5 != 0 {print $9}' > $out_demtx/demultiplexing.barcode1.fastq # to skip zero reads files
   parallel -j $parameter_t parallel_cutadapt2 :::: $out_demtx/demultiplexing.barcode1.fastq
 
   parallel_cutadapt3(){
-    fastq1={1}
-    ehco $fastq1
+    fastq1=$1
     fastq2=$(echo $fastq1|sed 's|R1.fastq|R2.fastq|')
     sample=$(basename $fastq1|cut -d_ -f1)
-    barcode_name=$(basename $parallel_parameter_b1|cut -d. -f1)
-    $parallel_cutadapt_path --action trim -e 0 --cores 1 -g file:$parallel_parameter_b1 -o $parallel_out_demtx/barcode1/${sample}-{name}_R2.fastq -p $parallel_out_demtx/barcode1/${sample}-{name}_R1.fastq $fastq2 $fastq1 >> $parallel_out_demtx/barcode1/${barcode_name}.log 2>&1  
+    barcode_name=$(basename $parallel_parameter_b3|cut -d. -f1)
+    $parallel_cutadapt_path --action trim -e 0 --cores 1 -g file:$parallel_parameter_b3 -o $parallel_out_demtx/barcode3/${sample}+{name}_R2.fastq -p $parallel_out_demtx/barcode3/${sample}+{name}_R1.fastq $fastq2 $fastq1 >> $parallel_out_demtx/barcode3/${barcode_name}.log 2>&1  
     }
-  export parallel_parameter_b1=$parameter_b1
+  export parallel_parameter_b3=$parameter_b3
   export parallel_cutadapt_path=$cutadapt_path 
   export parallel_out_demtx=$out_demtx
-  export -f parallel_cutadapt1
-  ls -lhS "$out_demtx/barcode2/*|grep -v 'unknown'|awk '$5 != 0 {print $9}' > $out_demtx/demultiplexing.barcode2.fastq # to skip zero reads files
+  export -f parallel_cutadapt3
+  ls -lhS $out_demtx/barcode2/*|grep 'R1.fastq'| grep -v 'unknown'|awk '$5 != 0 {print $9}' > $out_demtx/demultiplexing.barcode2.fastq # to skip zero reads files
   parallel -j $parameter_t parallel_cutadapt3 :::: $out_demtx/demultiplexing.barcode2.fastq
 
   echo -e "\n Demultiplexing finished\n"
@@ -241,7 +240,7 @@ if [[ ! -f $out_demtx/fastq.non.zero.reads ]]; then
 
     process_file() {
     input=$1
-    reads_num=$("$parallel_bioawk_path" -cfastx '{if (length($seq)>0) sum=sum+1}END{print sum}' $input)
+    reads_num=$("$parallel_bioawk_path" -cfastx '{if (length($seq)>0) sum=sum+1}END{print sum}' $input) #we count reads when length > 0, sometimes it can have reads name but not sequences so grep -c '^@' will always give same R1 R2 reads number, but our method not necessary R1 always equal R2 number. 
     if [[ "$reads_num" -gt 0 ]]; then 
     output=$(basename "$input")
     echo $output $reads_num
@@ -320,8 +319,27 @@ echo -e "calculate coverage for each position finished\n"
 ###################################### depth calculation pooling all barcodes  ###################################
 echo -e "\n calculating pooled barcode position depth\n"
 
-# summing up reads from the same contigs and same position 
+# summing up reads from the same contigs and same position , combined depth for each position 
 awk '{data[$1" "$2] += $3}END{for (key in data) print key,data[key]}' $parameter_o/coverage/*.coverage.txt > $parameter_o/coverage/combined.depth.txt
 
-# method 1 using awk 
+# combined coverage
 awk '{if ($3>0) data[$1] = data[$1] + 1; row[$1] = row[$1] + 1} END {for (key in data) {cov = (data[key]/row[key]);print key, cov}}' $parameter_o/coverage/combined.depth.txt > $parameter_o/coverage/combined.coverage.txt
+
+################################################################################################################
+###################################### average depth and coverage for each barcode  ############################
+echo -e "\n calculate average coverage for each barcode"
+count_coverage() {
+    input=$1
+    cov=$(awk '{if ($3>0) sum = sum + 1}END{print sum/NR}' $input)
+    echo $input $cov >> $parallel_parameter_o/coverage/average.coverage.txt
+}
+export -f count_coverage
+export parallel_parameter_o=$parameter_o
+
+ls -lhS $parameter_o/coverage/*.coverage.txt | grep -v 'combined'|grep -v 'average'|awk '$5 != 0 {print $9}' > $parameter_o/coverage/fastq.non.zero
+
+parallel -j $parameter_t count_coverage :::: $parameter_o/coverage/fastq.non.zero
+
+sed 's/.*\///' $parallel_parameter_o/coverage/average.coverage.txt | awk '{split($1, arr, "-"); sum[arr[1]] += $2; count[arr[1]] += 1} END {for (key in sum) print key, sum[key] / count[key]}' >> $parallel_parameter_o/coverage/mean.average.coverage.txt
+
+echo -e "\n calculate average coverage for each barcode finished "
