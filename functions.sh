@@ -1,12 +1,3 @@
-# module load tools computerome_utils/2.0
-# module load anaconda3/2023.09-0 # for cutadapt 
-# module load snakemake/8.4.2  # needed to use the pipeline 
-# module load parallel/20220422
-# module load bioawk/1.0
-# module load jdk/22
-# module load trimmomatic/0.38
-# module load singularity/4.1.2  # needed to run the pipeline 
-
 
 my_cutadapt() {
     # Check if cutadapt is installed
