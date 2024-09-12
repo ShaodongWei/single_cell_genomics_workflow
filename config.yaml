@@ -1,17 +1,17 @@
-functions: "/home/people/qinwan/qinqin/novaseq_test/snakemake/functions.sh"
-input_directory: "/home/people/qinwan/qinqin/novaseq_test/snakemake/data" # directory that contains a single pair of uncompressed fasta file
-output_directory: "/home/people/qinwan/qinqin/novaseq_test/snakemake/output" # directory that all intermediate files and final results will be saved
-barcode1: "/home/people/qinwan/qinqin/novaseq_test/snakemake/barcode/barcode3.fa"
-barcode2: "/home/people/qinwan/qinqin/novaseq_test/snakemake/barcode/barcode2.fa"
-barcode3: "/home/people/qinwan/qinqin/novaseq_test/snakemake/barcode/barcode1.fa"
-primer: "/home/people/qinwan/qinqin/novaseq_test/snakemake/primer/primer.fa"
-reference: "/home/people/qinwan/qinqin/novaseq_test/snakemake/reference_plas/KP_fa"
+functions: "/path/to/functions.sh"
+input_directory: "/path/to/directory" # directory that contains a single pair of uncompressed fasta file
+output_directory: "/path/to/directory" # directory that all intermediate files and final results will be saved
+barcode1: "/path/to/barcode1.fa"
+barcode2: "/path/to/barcode2.fa"
+barcode3: "/path/to/barcode3.fa"
+primer: "/path/to/primer.fa"
+reference: "/path/to/reference.fa"
 
 # threads to use, better to be same as the specified in snakemake 
 threads: 5
 
-# prune samples based on reads 
-min_reads: 10
+# prune samples based on R1+R2 reads. It can be > min_reads, or < max_reads, or between min_reads and max_reads,  
+min_reads: 10 
 max_reads: 
 
 # cutadapt 
@@ -20,5 +20,3 @@ cutadapt_overlap_minlength: 6
 
 # trimmomatic average quality with the sliding windows
 trimmomatic_quality : 15
-
-#software: "/home/people/qinwan/qinqin/novaseq_test/snakemake/software.yaml" #since we now use singularity, we dont need conda 
