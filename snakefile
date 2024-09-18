@@ -1,4 +1,4 @@
-configfile: "config.yaml" # path to the config.yaml or in the same directory as snakefile 
+configfile: "config.yaml" 
 
 rule all:
     input:
@@ -10,9 +10,6 @@ rule all:
         config['output_directory'] + '/trimmomatic/.quality_control.done',
         config['output_directory'] + '/bwa_mem/.mapping2reference.done',
         config['output_directory'] + '/depth_coverage/.depth_coverage.done'
-
-
-
         
 rule demultiplexing:
     input:
