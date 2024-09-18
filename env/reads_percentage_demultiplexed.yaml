@@ -1,0 +1,5 @@
+channels:
+  - bioconda
+dependencies:
+  - bioawk=1.0
+  - parallel=20240722
