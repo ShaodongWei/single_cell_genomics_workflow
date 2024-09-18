@@ -1,0 +1,8 @@
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - parallel=20240722
+  - samtools=1.20
+  - bioawk=1.0
