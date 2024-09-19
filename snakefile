@@ -203,7 +203,11 @@ rule mapping:
         mkdir -p {params.output_dir}/bwa_mem/bam
         export TMPDIR=/tmp
         # we need to use r to escape the backslash 
-        find {params.output_dir}/bwa_mem/sam -name *sam -type f | parallel -j {params.threads} "sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}'); samtools view --threads 1 -Sb {{}} > {params.output_dir}/bwa_mem/bam/\${{sample}}.bam; samtools sort --threads 1 -o {params.output_dir}/bwa_mem/bam/\${{sample}}.sorted.bam {params.output_dir}/bwa_mem/bam/\${{sample}}.bam"
+        find {params.output_dir}/bwa_mem/sam -name "*sam" -type f | parallel -j {params.threads} "
+            sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}'); 
+            samtools view --threads 1 -Sb {{}} > {params.output_dir}/bwa_mem/bam/\${{sample}}.bam; 
+            samtools sort --threads 1 -o {params.output_dir}/bwa_mem/bam/\${{sample}}.sorted.bam {params.output_dir}/bwa_mem/bam/\${{sample}}.bam
+            "
         
         touch {output}
         '''
