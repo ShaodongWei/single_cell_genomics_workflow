@@ -258,13 +258,13 @@ count_coverage(){
     done
 
     # Initialize default values
-    fastq=""
+    input=""
     reference=""
     
     # Parse labeled parameters
     while [[ "$#" -gt 0 ]]; do
         case $1 in
-            --fastq) fastq="$2"; shift ;;
+            --input) input="$2"; shift ;;
             --reference) reference="$2"; shift ;;
             *) echo "Unknown parameter passed: $1"; return 1 ;;
         esac
@@ -272,23 +272,20 @@ count_coverage(){
     done
 
     # Check if required arguments are provided
-    if [[ -z "$fastq" || -z "$reference" ]]; then
-        echo "Usage: count_coverage --fastq <fastq> --reference <reference>"
+    if [[ -z "$input" || -z "$reference" ]]; then
+        echo "Usage: count_coverage --input <input> --reference <reference>"
         return 1
     fi
 
-    input=$1
+    # calculation (can handle genome (single length) or plasmid (multiple length))
+    cat $reference | bioawk -cfastx '{print $name"~"length($seq)}' | while read -r line;do
+        sample=$(basename $input)
+        sample=${sample%.depth*}
+        ref_name=$(echo $line|cut -d'~' -f1)
+        ref_length=$(echo $line|cut -d'~' -f2)
+        # Get the number of lines in the input file for the corresponding reference (important for plasmid)
+        row=$(cat $input | grep "$ref_name" | wc -l)
+        echo $sample $ref_name $ref_length $row|awk '{print $1,$2,$4/$3}'
+    done
     
-    # Get reference length
-    ref_len=$(bioawk -cfastx '{print length($seq)}' "$reference")
-
-    # Get the number of lines in the input file
-    row=$(wc -l < "$fastq" | awk '{print $1}')
-
-    # Calculate coverage
-    cov=$(awk -v row="$row" -v len="$ref_len" 'BEGIN { print row / len }')
-
-    # Append coverage information to the output file
-    echo "$fastq $cov"
 }
-  
