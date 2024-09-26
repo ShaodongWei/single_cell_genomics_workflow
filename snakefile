@@ -1,4 +1,4 @@
-configfile: "config.yaml" 
+configfile: "config.yaml" # path to the config.yaml or in the same directory as snakefile 
 
 rule all:
     input:
@@ -10,7 +10,7 @@ rule all:
         config['output_directory'] + '/trimmomatic/.quality_control.done',
         config['output_directory'] + '/bwa_mem/.mapping2reference.done',
         config['output_directory'] + '/depth_coverage/.depth_coverage.done'
-        
+
 rule demultiplexing:
     input:
         fastq1 = config['fastq1'],
@@ -174,7 +174,7 @@ rule mapping:
         output_dir = config['output_directory'],
         threads = config['threads'],
         reference = config['reference'],
-        functions = config['functions'],
+        functions = config['functions']
     conda:
         "env/mapping.yaml" 
 
@@ -203,8 +203,9 @@ rule mapping:
         mkdir -p {params.output_dir}/bwa_mem/bam
         export TMPDIR=/tmp
         # we need to use r to escape the backslash 
+        
         find {params.output_dir}/bwa_mem/sam -name "*sam" -type f | parallel -j {params.threads} "
-            sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}'); 
+            sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}');
             samtools view --threads 1 -Sb {{}} > {params.output_dir}/bwa_mem/bam/\${{sample}}.bam; 
             samtools sort --threads 1 -o {params.output_dir}/bwa_mem/bam/\${{sample}}.sorted.bam {params.output_dir}/bwa_mem/bam/\${{sample}}.bam
             "
@@ -221,7 +222,7 @@ rule depth_coverage:
         output_dir = config['output_directory'],
         threads = config['threads'],
         reference = config['reference'],
-        functions = config['functions'],
+        functions = config['functions']
     conda:
         "env/depth_coverage.yaml" 
     shell:
@@ -239,15 +240,25 @@ rule depth_coverage:
 
         # coverage for each contig, Calculate the length of reference and store it in a variable 
         ref_length=$( bioawk -cfastx '{{print $name"\t"length($seq)}}' {params.reference}) #when for plasmid, it can be multiple lines 
-        echo "$ref_length"
-        
-        # calculate the percentage of positions having reads mapped (genome coverage)
         if [[ -f {params.output_dir}/depth_coverage/contigs.coverage.txt ]];then rm {params.output_dir}/depth_coverage/contigs.coverage.txt;fi
-        
         echo "$ref_length" | while read -r line;do
             awk -v ref_length_line="$line" 'BEGIN{{split(ref_length_line, parts, "\t"); total[parts[1]] = parts[2]}} {{if ($3 > 0) {{data[$1] += 1}}}} END \
                 {{for (key in total) {{print key, data[key] / total[key]}}}}' {params.output_dir}/depth_coverage/contigs.depth.each.position.txt >> {params.output_dir}/depth_coverage/contigs.coverage.txt
         done
+
+        # coverage for each barcode
+        find {params.output_dir}/depth_coverage -type f -name "*-*.depth.txt" -size +0 > {params.output_dir}/depth_coverage/barcode.depth.not.zero
+
+        source {params.functions} # load functions
+        export -f count_coverage
+        export TMPDIR=/tmp
+        parallel -j {params.threads} "
+            #out_file=\$(basename {{}} .depth.txt).coverage.txt;
+            count_coverage --input {{}}  --reference {params.reference} >> {params.output_dir}/depth_coverage/barcode.coverage.txt
+            " :::: {params.output_dir}/depth_coverage/barcode.depth.not.zero
         
         touch {output}
         '''
+
+
+        
