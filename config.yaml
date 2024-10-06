@@ -1,15 +1,16 @@
-functions: "/Users/shaodongwei/snakemake/functions.sh"
-fastq1: "/Users/shaodongwei/snakemake/data/KP_R1.fastq" #specify input files 
-fastq2: "/Users/shaodongwei/snakemake/data/KP_R2.fastq" 
-output_directory: "/Users/shaodongwei/snakemake/output4" 
-barcode1: "/Users/shaodongwei/snakemake/barcode/barcode3.fa"
-barcode2: "/Users/shaodongwei/snakemake/barcode/barcode2.fa"
-barcode3: "/Users/shaodongwei/snakemake/barcode/barcode1.fa"
-primer: "/Users/shaodongwei/snakemake/primer/primer.fa"
-reference: "/Users/shaodongwei/snakemake/reference_plas/KP_fa" # the sample name has to be "_" separated. 
+functions: "/path/to/functions.sh"
+fastq1: "/path/to/KP_R1.fastq" #specify input files 
+fastq2: "/path/to/KP_R2.fastq" 
+output_directory: "/path/to/output" 
+barcode1: "/path/to/barcode/barcode3.fa"
+barcode2: "/path/to/barcode/barcode2.fa"
+barcode3: "/path/to/barcode/barcode1.fa"
+primer: "/path/to/primer.fa"
+reference: "/path/to/KP_fa" # the sample name has to be "_" separated. 
+mapper: "kma" # 'kma' or 'bwa-mem'
 
 # threads to use, better to be same as the specified in snakemake 
-threads: 4
+threads: 40
 
 # prune samples based on reads 
 min_reads: 10
