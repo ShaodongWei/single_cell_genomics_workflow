@@ -192,7 +192,7 @@ prune_sample(){
     fi
 }
 
-mapping(){
+bwa_mapping(){
     # Define a list of software to check
     required_software=("bwa-mem2")
 
@@ -224,7 +224,7 @@ mapping(){
 
     # Check if required arguments are provided
     if [[ -z "$fastq1" || -z "$reference_index" || -z "$output_dir" || -z "$threads" ]]; then
-        echo "Usage: mapping --fastq1 <fastq1> --reference_index <reference_index> --output_dir <output_dir> --threads <threads>"
+        echo "Usage: bwa_mapping --fastq1 <fastq1> --reference_index <reference_index> --output_dir <output_dir> --threads <threads>"
         return 1
     fi
 
@@ -238,13 +238,60 @@ mapping(){
     
     # if the mapping not successful for samples, e.g. due to meomory problem somehow (e.g. core dumped files)
     if [ $? -ne 0 ]; then
-        echo "bwa-mem2 mem failed for sample ${sample_barcode}." >&2
         echo "$(date): bwa-mem2 mem failed for ${sample_barcode}" >> $output_dir/error.log
         # Optionally: take further action like deleting corrupted outputs
         rm -f $output_dir/${sample_barcode}.sam
     fi
 }
 
+kma_mapping(){
+    # Define a list of software to check
+    required_software=("kma")
+
+    # Check if each software is installed
+    for software in "${required_software[@]}"; do
+        if ! command -v $software &> /dev/null; then
+            echo "Error: $software is not installed or not available in the PATH."
+            return 1
+        fi
+    done
+
+    # Initialize default values
+    fastq1=""
+    reference_index=""
+    output_dir=""
+    threads=""
+
+    # Parse labeled parameters
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --fastq1) fastq1="$2"; shift ;;
+            --reference_index) reference_index="$2"; shift ;;
+            --output_dir) output_dir="$2"; shift ;;
+            --threads) threads="$2"; shift ;;
+            *) echo "Unknown parameter passed: $1"; return 1 ;;
+        esac
+        shift
+    done
+
+    # Check if required arguments are provided
+    if [[ -z "$fastq1" || -z "$reference_index" || -z "$threads" || -z "$output_dir" ]]; then
+        echo "Usage: kma_mapping --fastq1 <fastq1> --reference_index <reference_index> --output_dir <output_dir> --threads <threads>"
+        return 1
+    fi
+
+    sample_fastq=$(basename "$fastq1" | cut -d_ -f1 | cut -d- -f1)
+    sample_barcode=$(basename "$fastq1" | cut -d_ -f1)
+    fastq2=$(echo $fastq1 | sed "s/R1.paired.fastq/R2.paired.fastq/")
+    kma -ipe $fastq1 $fastq2 -t_db $reference_index -o $output_dir -t $threads -sam -k 10 -nc -nf
+    
+    # if the mapping not successful for samples, e.g. due to meomory problem somehow (e.g. core dumped files)
+    if [ $? -ne 0 ]; then
+        echo "$(date): kma mapping failed for ${sample_barcode}" >> $output_dir/error.log
+        # Optionally: take further action like deleting corrupted outputs
+        #rm -f $output_dir/${sample_barcode}.sam
+    fi
+}
 count_coverage(){
     # Define a list of software to check
     required_software=("bioawk")
