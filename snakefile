@@ -8,7 +8,7 @@ rule all:
         config['output_directory'] + '/demultiplexed/.prune_sample_by_reads.done',
         config['output_directory'] + '/demultiplexed/.reads_percentage_demultiplexed.done',
         config['output_directory'] + '/trimmomatic/.quality_control.done',
-        config['output_directory'] + '/bwa_mem/.mapping2reference.done',
+        config['output_directory'] + '/mapping/.mapping2reference.done',
         config['output_directory'] + '/depth_coverage/.depth_coverage.done'
 
 rule demultiplexing:
@@ -154,12 +154,22 @@ rule quality_control:
         mkdir -p {params.output_dir}/trimmomatic
 
         if [[ -f {params.output_dir}/trimmomatic/trimmomatic.log ]]; then rm {params.output_dir}/trimmomatic/trimmomatic.log; fi
-        sed -e "s|^|{params.output_dir}/demultiplexed/barcode3/|" -e "s|$|_R1.fastq|" {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads.selected |while read -r f1;\
-        do f2_file=$(basename $f1|cut -d_ -f1)_R2.fastq;dir_path=$(dirname $f1);f2="$dir_path/$f2_file";sample=$(basename $f1|cut -d_ -f1);\
-        trimmomatic PE -threads {params.threads} $f1 $f2 {params.output_dir}/trimmomatic/${{sample}}_R1.paired.fastq {params.output_dir}/trimmomatic/${{sample}}_R1.unpaired.fastq \
-            {params.output_dir}/trimmomatic/${{sample}}_R2.paired.fastq {params.output_dir}/trimmomatic/${{sample}}_R2.unpaired.fastq \
-        ILLUMINACLIP:{params.primer}:2:30:10:2:True LEADING:3 TRAILING:3 SLIDINGWINDOW:4:{params.trimmomatic_quality} MINLEN:30 >> {params.output_dir}/trimmomatic/trimmomatic.log 2>&1;\
-        done
+        if [[ -f {params.output_dir}/trimmomatic/error.log ]]; then rm {params.output_dir}/trimmomatic/error.log; fi
+        sed -e "s|^|{params.output_dir}/demultiplexed/barcode3/|" -e "s|$|_R1.fastq|" {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads.selected |\
+            while read -r f1; do
+                f2_file=$(basename $f1|cut -d_ -f1)_R2.fastq
+                dir_path=$(dirname $f1)
+                f2="$dir_path/$f2_file"
+                sample=$(basename $f1|cut -d_ -f1)
+                if ! (trimmomatic PE -threads {params.threads} "$f1" "$f2" \
+                    {params.output_dir}/trimmomatic/${{sample}}_R1.paired.fastq {params.output_dir}/trimmomatic/${{sample}}_R1.unpaired.fastq \
+                    {params.output_dir}/trimmomatic/${{sample}}_R2.paired.fastq {params.output_dir}/trimmomatic/${{sample}}_R2.unpaired.fastq \
+                    ILLUMINACLIP:{params.primer}:2:30:10:2:True LEADING:3 TRAILING:3 SLIDINGWINDOW:4:{params.trimmomatic_quality} MINLEN:30 >> \
+                    {params.output_dir}/trimmomatic/trimmomatic.log 2>&1); then 
+                        echo "error for $f1" >> {params.output_dir}/trimmomatic/error.log
+                fi
+                
+            done
 
         touch {output}
 
@@ -169,45 +179,77 @@ rule mapping:
     input:
         config['output_directory'] + '/trimmomatic/.quality_control.done'
     output:
-        config['output_directory'] + '/bwa_mem/.mapping2reference.done'
+        config['output_directory'] + '/mapping/.mapping2reference.done'
     params:
         output_dir = config['output_directory'],
         threads = config['threads'],
         reference = config['reference'],
-        functions = config['functions']
+        functions = config['functions'],
+        mapper = config['mapper']
+
     conda:
         "env/mapping.yaml" 
 
     shell:
         r'''              
         source {params.functions}
+        echo {params.mapper}
         
-        mkdir -p {params.output_dir}/bwa_mem/index
-        mkdir -p {params.output_dir}/bwa_mem/sam
+        mkdir -p {params.output_dir}/mapping/index
+        mkdir -p {params.output_dir}/mapping/sam
 
-        # index the reference file 
-        sample=$(basename {params.reference} | cut -d_ -f1)
-        bwa-mem2 index -p {params.output_dir}/bwa_mem/index/$sample {params.reference} > /dev/null
-    
-        # mapping
-        if [[ -f {params.output_dir}/bwa_mem/sam/bwa-mem2.log ]];then rm {params.output_dir}/bwa_mem/sam/bwa-mem2.log;fi
-        if [[ -f {params.output_dir}/bwa_mem/sam/error.log ]];then rm {params.output_dir}/bwa_mem/sam/error.log;fi
-        export -f mapping
-        export TMPDIR=/tmp # for parallel, temporary files, to avoid the system /etc /scratch where I have read-only permission. 
+        # choose mapper 
+        if [[ {params.mapper} == 'bwa-mem' ]]; then 
+            # index the reference file 
+            sample=$(basename {params.reference} | cut -d_ -f1)
+            bwa-mem2 index -p {params.output_dir}/mapping/index/$sample {params.reference} > /dev/null
+        
+            # mapping
+            if [[ -f {params.output_dir}/mapping/sam/bwa-mem2.log ]];then rm {params.output_dir}/mapping/sam/bwa-mem2.log;fi
+            if [[ -f {params.output_dir}/mapping/sam/error.log ]];then rm {params.output_dir}/mapping/sam/error.log;fi
+            export -f bwa_mapping
+            export TMPDIR=/tmp # for parallel, temporary files, to avoid the system /etc /scratch where I have read-only permission. 
+            
 
-        find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' | parallel -j {params.threads} -k \
-            "mapping --fastq1 {{}} --reference_index {params.output_dir}/bwa_mem/index/$sample --output_dir {params.output_dir}/bwa_mem/sam --threads 1 \
-                >> {params.output_dir}/bwa_mem/sam/bwa-mem2.log 2>&1"
+            find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' | parallel -j {params.threads} -k \
+                "
+                bwa_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam --threads 1 \
+                >> {params.output_dir}/mapping/sam/bwa-mem2.log 2>&1
+                
+                "
 
+        elif [[ {params.mapper} == 'kma' ]]; then 
+            # index the reference file 
+            sample=$(basename {params.reference} | cut -d_ -f1)
+            kma index -i {params.reference} -o {params.output_dir}/mapping/index/$sample  -k 10 > /dev/null
+        
+            # mapping
+            if [[ -f {params.output_dir}/mapping/sam/kma.log ]];then rm {params.output_dir}/mapping/sam/kma.log;fi
+            if [[ -f {params.output_dir}/mapping/sam/error.log ]];then rm {params.output_dir}/mapping/sam/error.log;fi
+            export -f kma_mapping
+            find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' -size +0 | parallel -j 1 -k \
+                "
+                sample_barcode=\$(basename {{}} | cut -d_ -f1);
+                #mkdir -p {params.output_dir}/mapping/sam/\$sample_barcode;
+                if ! (kma_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam/\$sample_barcode --threads 1 \
+                    > {params.output_dir}/mapping/sam/\${{sample_barcode}}.sam \
+                    2>> {params.output_dir}/mapping/sam/error.log); then 
+                        rm -r {params.output_dir}/mapping/sam/\$sample_barcode
+                        echo \"error for {{}}\" >> {params.output_dir}/mapping/sam/error.log
+                fi
+                "
+        fi
+
+        # the problem likely is: when using bwa-mem2, eventhoug a sam file is empty, but it still has a header, but for kma empty sam there is no header, then makes the bam conversion problematic. 
         # converting sam to bam 
-        mkdir -p {params.output_dir}/bwa_mem/bam
+        mkdir -p {params.output_dir}/mapping/bam
         export TMPDIR=/tmp
         # we need to use r to escape the backslash 
         
-        find {params.output_dir}/bwa_mem/sam -name "*sam" -type f | parallel -j {params.threads} "
+        find {params.output_dir}/mapping/sam -name "*sam" -type f | parallel -j {params.threads} "
             sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}');
-            samtools view --threads 1 -Sb {{}} > {params.output_dir}/bwa_mem/bam/\${{sample}}.bam; 
-            samtools sort --threads 1 -o {params.output_dir}/bwa_mem/bam/\${{sample}}.sorted.bam {params.output_dir}/bwa_mem/bam/\${{sample}}.bam
+            samtools view --threads 1 -Sb {{}} > {params.output_dir}/mapping/bam/\${{sample}}.bam 2>> {params.output_dir}/mapping/bam/error.log; 
+            samtools sort --threads 1 -o {params.output_dir}/mapping/bam/\${{sample}}.sorted.bam {params.output_dir}/mapping/bam/\${{sample}}.bam
             "
         
         touch {output}
@@ -215,7 +257,7 @@ rule mapping:
 
 rule depth_coverage:
     input:
-        config['output_directory'] + '/bwa_mem/.mapping2reference.done'
+        config['output_directory'] + '/mapping/.mapping2reference.done'
     output:
         config['output_directory'] + '/depth_coverage/.depth_coverage.done'
     params:
@@ -231,7 +273,7 @@ rule depth_coverage:
 
         # sequencing depth for non-zero position for each barcode 
         export TMPDIR=/tmp
-        find {params.output_dir}/bwa_mem/bam -name *sorted.bam -type f | parallel -j {params.threads} " sample=\$(basename {{}}|awk -F".sorted.bam" '{{print \$1}}'); \
+        find {params.output_dir}/mapping/bam -name *sorted.bam -type f | parallel -j {params.threads} " sample=\$(basename {{}}|awk -F".sorted.bam" '{{print \$1}}'); \
             samtools depth {{}} > {params.output_dir}/depth_coverage/\${{sample}}.depth.txt"
         
         # depth for each contig, summing up reads from the same contigs and same position , combine depth for each position from each barcode file
