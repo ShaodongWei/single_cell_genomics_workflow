@@ -231,9 +231,14 @@ rule mapping:
                 "
                 sample_barcode=\$(basename {{}} | cut -d_ -f1);
                 #mkdir -p {params.output_dir}/mapping/sam/\$sample_barcode;
+                # considering to output only mapped reads for sam file, !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
                 if ! (kma_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam/\$sample_barcode --threads 1 \
                     > {params.output_dir}/mapping/sam/\${{sample_barcode}}.sam \
-                    2>> {params.output_dir}/mapping/sam/error.log); then 
+                    # 2>> error.log is same as echo >> error.log, which is wrong. !!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                        2>> {params.output_dir}/mapping/sam/error.log); then 
+                        # rm -r line is wrong that there is no file called $sample_barcode, just delete this line !!!!!!!!!!!!!!!!!!!!!!!
                         rm -r {params.output_dir}/mapping/sam/\$sample_barcode
                         echo \"error for {{}}\" >> {params.output_dir}/mapping/sam/error.log
                 fi
@@ -247,6 +252,8 @@ rule mapping:
         
         find {params.output_dir}/mapping/sam -name "*sam" -type f | parallel -j {params.threads} "
             sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}');
+
+            # consider error when the input sam file is empty (no mapped reads) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             samtools view --threads 1 -Sb {{}} > {params.output_dir}/mapping/bam/\${{sample}}.bam 2>> {params.output_dir}/mapping/bam/error.log; 
             samtools sort --threads 1 -o {params.output_dir}/mapping/bam/\${{sample}}.sorted.bam {params.output_dir}/mapping/bam/\${{sample}}.bam
             "
