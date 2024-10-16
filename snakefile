@@ -210,7 +210,7 @@ rule mapping:
             export -f bwa_mapping
             export TMPDIR=/tmp # for parallel, temporary files, to avoid the system /etc /scratch where I have read-only permission. 
             
-
+            # add -size +0 for find !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' | parallel -j {params.threads} -k \
                 "
                 bwa_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam --threads 1 \
