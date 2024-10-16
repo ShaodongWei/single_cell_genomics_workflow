@@ -240,7 +240,6 @@ rule mapping:
                 "
         fi
 
-        # the problem likely is: when using bwa-mem2, eventhoug a sam file is empty, but it still has a header, but for kma empty sam there is no header, then makes the bam conversion problematic. 
         # converting sam to bam 
         mkdir -p {params.output_dir}/mapping/bam
         export TMPDIR=/tmp
