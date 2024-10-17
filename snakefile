@@ -227,6 +227,7 @@ rule mapping:
             if [[ -f {params.output_dir}/mapping/sam/kma.log ]];then rm {params.output_dir}/mapping/sam/kma.log;fi
             if [[ -f {params.output_dir}/mapping/sam/error.log ]];then rm {params.output_dir}/mapping/sam/error.log;fi
             export -f kma_mapping
+            # here the -j 1 is wrong should be {params.threads} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' -size +0 | parallel -j 1 -k \
                 "
                 sample_barcode=\$(basename {{}} | cut -d_ -f1);
