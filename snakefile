@@ -21,9 +21,9 @@ rule demultiplexing:
         config["output_directory"] + "/demultiplexed/.demultiplexing_barcode3.done"]
     params:
         output_dir = config['output_directory'],
-        barcode1 = config["barcode3"],  
+        barcode1 = config["barcode1"],  
         barcode2 = config["barcode2"],
-        barcode3 = config["barcode1"],
+        barcode3 = config["barcode3"],
         threads = config['threads'],
         error_rate = config['cutadapt_error_rate'],
         overlap_minlength = config['cutadapt_overlap_minlength'],
