@@ -27,7 +27,7 @@ rule demultiplexing:
         threads = config['threads'],
         error_rate = config['cutadapt_error_rate'],
         overlap_minlength = config['cutadapt_overlap_minlength'],
-        functions = config["functions"]
+        functions = "./functions.sh"
     conda:
         "env/demultiplexing.yaml"
     shell:
@@ -73,7 +73,7 @@ rule prune_sample_by_reads:
         threads = config['threads'],
         min_reads = config['min_reads'],
         max_reads = config['max_reads'],
-        functions = config["functions"]
+        functions = "./functions.sh"
     conda:
         "env/prune_sample_by_reads.yaml"
     shell:
@@ -112,7 +112,7 @@ rule reads_percentage_demultiplexed:
         fastq2 = config['fastq2'],
         output_dir = config['output_directory'],
         threads = config['threads'],
-        functions = config["functions"]
+        functions = "./functions.sh"
     conda:
         "env/reads_percentage_demultiplexed.yaml"
     shell:
@@ -184,7 +184,7 @@ rule mapping:
         output_dir = config['output_directory'],
         threads = config['threads'],
         reference = config['reference'],
-        functions = config['functions'],
+        functions = "./functions.sh",
         mapper = config['mapper']
 
     conda:
@@ -265,7 +265,7 @@ rule depth_coverage:
         output_dir = config['output_directory'],
         threads = config['threads'],
         reference = config['reference'],
-        functions = config['functions']
+        functions = "./functions.sh"
     conda:
         "env/depth_coverage.yaml" 
     shell:
