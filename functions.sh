@@ -1,4 +1,4 @@
-my_cutadapt() {
+my_cutadapt_old() {
     # Check if cutadapt is installed
     if ! command -v cutadapt &> /dev/null; then
         echo "Error: cutadapt is not installed or not available in the PATH."
@@ -47,6 +47,57 @@ my_cutadapt() {
         -g file:$barcode \
         -o $output_dir/"${sample}-{name}_R1.fastq" \
         -p $output_dir/"${sample}-{name}_R2.fastq" \
+        $fastq2 $fastq1 >> $output_dir/${barcode_name}.log 2>&1
+}
+my_cutadapt() {
+    # Check if cutadapt is installed
+    if ! command -v cutadapt &> /dev/null; then
+        echo "Error: cutadapt is not installed or not available in the PATH."
+        return 1
+    fi
+
+    # Initialize default values
+    fastq1=""
+    fastq2=""
+    barcode=""
+    output_dir=""
+    threads=""
+    error_rate=""
+    overlap_minlength=""
+
+    # Parse labeled parameters
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --fastq1) fastq1="$2"; shift ;;
+            --fastq2) fastq2="$2"; shift ;;
+            --barcode) barcode="$2"; shift ;;
+            --output_dir) output_dir="$2"; shift ;;
+            --threads) threads="$2"; shift ;;
+            --error_rate) error_rate="$2"; shift ;;
+            --overlap_minlength) overlap_minlength="$2"; shift ;;
+            *) echo "Unknown parameter passed: $1"; return 1 ;;
+        esac
+        shift
+    done
+
+    # Check if required arguments are provided
+    if [[ -z "$fastq1" || -z "$barcode" || -z "$output_dir" || -z "$threads" ]]; then
+        echo "Usage: my_cutadapt --fastq1 <fastq1> --fastq2 <fastq2> --barcode <barcode> --output_dir <output_dir> --threads <threads> --error_rate <error_rate> --overlap_minlength <overlap_minlength>"
+        return 1
+    fi
+
+    # check if directory exists, if not, create it 
+    if [[ ! -d $output_dir ]]; then 
+        mkdir -p $output_dir
+    fi 
+
+    sample=$(basename $fastq1 | cut -d_ -f1)
+    barcode_name=$(basename $barcode | cut -d. -f1)
+    
+    cutadapt --action trim -e $error_rate --overlap $overlap_minlength --cores $threads \
+        -g file:$barcode \
+        -o $output_dir/"${sample}-{name}_R2.fastq" \
+        -p $output_dir/"${sample}-{name}_R1.fastq" \
         $fastq2 $fastq1 >> $output_dir/${barcode_name}.log 2>&1
 }
 
@@ -194,7 +245,7 @@ prune_sample(){
 
 bwa_mapping(){
     # Define a list of software to check
-    required_software=("bwa-mem2")
+    required_software=("bwa-mem2" "samtools")
 
     # Check if each software is installed
     for software in "${required_software[@]}"; do
@@ -234,14 +285,10 @@ bwa_mapping(){
     sample_fastq=$(basename "$fastq1" | cut -d_ -f1 | cut -d- -f1)
     sample_barcode=$(basename "$fastq1" | cut -d_ -f1)
     fastq2=$(echo $fastq1 | sed "s/R1.paired.fastq/R2.paired.fastq/")
-    bwa-mem2 mem -o $output_dir/${sample_barcode}.sam -t $threads $reference_index $fastq1 $fastq2 
-    
-    # if the mapping not successful for samples, e.g. due to meomory problem somehow (e.g. core dumped files)
-    if [ $? -ne 0 ]; then
-        echo "$(date): bwa-mem2 mem failed for ${sample_barcode}" >> $output_dir/error.log
-        # Optionally: take further action like deleting corrupted outputs
-        rm -f $output_dir/${sample_barcode}.sam
-    fi
+
+    # there is no parameter to ouptut only mapped reads
+    bwa-mem2 mem -t $threads $reference_index $fastq1 $fastq2 | samtools view -S -F4 -h > $output_dir/${sample_barcode}.sam
+ 
 }
 
 kma_mapping(){
@@ -283,14 +330,9 @@ kma_mapping(){
     sample_fastq=$(basename "$fastq1" | cut -d_ -f1 | cut -d- -f1)
     sample_barcode=$(basename "$fastq1" | cut -d_ -f1)
     fastq2=$(echo $fastq1 | sed "s/R1.paired.fastq/R2.paired.fastq/")
-    kma -ipe $fastq1 $fastq2 -t_db $reference_index -o $output_dir -t $threads -sam -k 10 -nc -nf
-    
-    # if the mapping not successful for samples, e.g. due to meomory problem somehow (e.g. core dumped files)
-    if [ $? -ne 0 ]; then
-        echo "$(date): kma mapping failed for ${sample_barcode}" >> $output_dir/error.log
-        # Optionally: take further action like deleting corrupted outputs
-        #rm -f $output_dir/${sample_barcode}.sam
-    fi
+    # -sam 4 only make sure the reference is not *, does not consider mapping position is 0, which is actually not mapped 
+    kma -ipe $fastq1 $fastq2 -t_db $reference_index -o $output_dir -t $threads -sam 4 -k 16 -nc -nf
+
 }
 count_coverage(){
     # Define a list of software to check
