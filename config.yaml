@@ -1,4 +1,3 @@
-functions: "/path/to/functions.sh"
 fastq1: "/path/to/KP_R1.fastq" #specify input files 
 fastq2: "/path/to/KP_R2.fastq" 
 output_directory: "/path/to/output" 
