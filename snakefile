@@ -210,37 +210,34 @@ rule mapping:
             export -f bwa_mapping
             export TMPDIR=/tmp # for parallel, temporary files, to avoid the system /etc /scratch where I have read-only permission. 
             
-            # add -size +0 for find !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' | parallel -j {params.threads} -k \
+
+            find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' -size +0 | parallel -j 1 -k \
                 "
-                bwa_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam --threads 1 \
+                if ! (
+                bwa_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam --threads {params.threads} \
                 >> {params.output_dir}/mapping/sam/bwa-mem2.log 2>&1
+                ); then 
+                echo \"error for {{}}\" >> {params.output_dir}/mapping/sam/error.log
+                fi
                 
                 "
 
         elif [[ {params.mapper} == 'kma' ]]; then 
             # index the reference file 
             sample=$(basename {params.reference} | cut -d_ -f1)
-            kma index -i {params.reference} -o {params.output_dir}/mapping/index/$sample  -k 10 > /dev/null
+            kma index -i {params.reference} -o {params.output_dir}/mapping/index/$sample  -k 16 > /dev/null
         
             # mapping
             if [[ -f {params.output_dir}/mapping/sam/kma.log ]];then rm {params.output_dir}/mapping/sam/kma.log;fi
             if [[ -f {params.output_dir}/mapping/sam/error.log ]];then rm {params.output_dir}/mapping/sam/error.log;fi
             export -f kma_mapping
-            # here the -j 1 is wrong should be {params.threads} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             find "{params.output_dir}/trimmomatic/" -name '*R1.paired.fastq' -size +0 | parallel -j 1 -k \
                 "
                 sample_barcode=\$(basename {{}} | cut -d_ -f1);
                 #mkdir -p {params.output_dir}/mapping/sam/\$sample_barcode;
-                # considering to output only mapped reads for sam file, !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                if ! (kma_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam/\$sample_barcode --threads 1 \
+                if ! (kma_mapping --fastq1 {{}} --reference_index {params.output_dir}/mapping/index/$sample --output_dir {params.output_dir}/mapping/sam/\$sample_barcode --threads {params.threads} \
                     > {params.output_dir}/mapping/sam/\${{sample_barcode}}.sam \
-                    # 2>> error.log is same as echo >> error.log, which is wrong. !!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                        2>> {params.output_dir}/mapping/sam/error.log); then 
-                        # rm -r line is wrong that there is no file called $sample_barcode, just delete this line !!!!!!!!!!!!!!!!!!!!!!!
-                        rm -r {params.output_dir}/mapping/sam/\$sample_barcode
+                    2>> {params.output_dir}/mapping/sam/sam.log); then 
                         echo \"error for {{}}\" >> {params.output_dir}/mapping/sam/error.log
                 fi
                 "
@@ -251,12 +248,9 @@ rule mapping:
         export TMPDIR=/tmp
         # we need to use r to escape the backslash 
         
-        find {params.output_dir}/mapping/sam -name "*sam" -type f | parallel -j {params.threads} "
+        find {params.output_dir}/mapping/sam -name "*sam" -type f -size +0| parallel -j {params.threads} "
             sample=\$(basename {{}} | awk -F'.sam' '{{print \$1}}');
-
-            # consider error when the input sam file is empty (no mapped reads) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            samtools view --threads 1 -Sb {{}} > {params.output_dir}/mapping/bam/\${{sample}}.bam 2>> {params.output_dir}/mapping/bam/error.log; 
-            samtools sort --threads 1 -o {params.output_dir}/mapping/bam/\${{sample}}.sorted.bam {params.output_dir}/mapping/bam/\${{sample}}.bam
+            samtools view --threads 1 -Sb {{}} | samtools sort --threads 1 -o {params.output_dir}/mapping/bam/\${{sample}}.sorted.bam 2>> {params.output_dir}/mapping/bam/error.log; 
             "
         
         touch {output}
