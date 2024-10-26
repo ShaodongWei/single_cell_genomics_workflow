@@ -7,3 +7,4 @@ dependencies:
   - parallel=20240722
   - bwa-mem2=2.2.1
   - samtools=1.20
+  - kma=1.4.15
