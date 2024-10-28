@@ -1,17 +1,19 @@
 For more detials please go the wiki page [https://github.com/ShaodongWei/single_cell_sequencing_workflow/wiki]
 # 1. Run the entire pipeline
+```
 conda config --set channel_priority flexible # set channel priority to be flexible for conda
 
 snakemake --cores threads_number --use-conda  # conda will install dependencies into isolated environment for each step. All steps will be executed sequentially. 
 
 snakemake --cores threads_number --use-conda --dryrun # using dryrun to check what steps will be executed
-
+```
 
 # 2. Run a specific step 
+```
 snakemake --list # to show steps
 
 snakemake step_name --cores threads_number --use-conda # run a specific step 
-
+```
 
 # 3. Steps in the workflow 
 
@@ -39,7 +41,7 @@ snakemake quality_control --cores threads_number --use-conda
 ```
 
 ## 3.5, mapping reads to reference 
-This step is to map each barcoded fastq files to the reference. Users can choose to use bwa-mem2 (https://github.com/bwa-mem2/bwa-mem2) as the mapper for general purposes, or the kma (https://bitbucket.org/genomicepidemiology/kma/src/master/) as the mapper when the references have similar genomes or redundant.
+This step is to map each barcoded fastq files to the reference. Users can choose to use bwa-mem2 (https://github.com/bwa-mem2/bwa-mem2) as the mapper for general purposes, or the kma (https://bitbucket.org/genomicepidemiology/kma/src/master/) as the mapper when the references have similar genomes or are redundant.
 ```
 snakemake mapping --cores threads_number --use-conda
 ```
