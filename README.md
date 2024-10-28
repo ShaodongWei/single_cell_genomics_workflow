@@ -16,7 +16,11 @@ snakemake step_name --cores threads_number --use-conda # run a specific step
 # 3. Steps in the workflow 
 
 ## 3.1, demultiplexing
-'''snakemake --cores threads_number --use-conda'''
+´´´
+
+snakemake --cores threads_number --use-conda
+
+´´´
 
 This step is to demultiplex your single raw fastq files into barcoded single cell files that each file ideally represents a single droplet. You have to use 3 tandem barcode files that are allocated on the R2 file. The workflow can easily be modified to support the condition that barcode are on the R1 file or both. 
 
