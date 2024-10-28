@@ -1,15 +1,23 @@
 For more detials please go the wiki page [https://github.com/ShaodongWei/single_cell_sequencing_workflow/wiki]
 # 1. Run the entire pipeline
 conda config --set channel_priority flexible # set channel priority to be flexible for conda
+
 snakemake --cores threads_number --use-conda  # conda will install dependencies into isolated environment for each step. All steps will be executed sequentially. 
+
+snakemake --cores threads_number --use-conda --dryrun # using dryrun to check what steps will be executed
+
 
 # 2. Run a specific step 
 snakemake --list # to show steps
-snakemake step_name --cores threads_number --use-conda
+
+snakemake step_name --cores threads_number --use-conda # run a specific step 
+
 
 # 3. Steps in the workflow 
 
 ## 3.1, demultiplexing
+'''snakemake --cores threads_number --use-conda'''
+
 This step is to demultiplex your single raw fastq files into barcoded single cell files that each file ideally represents a single droplet. You have to use 3 tandem barcode files that are allocated on the R2 file. The workflow can easily be modified to support the condition that barcode are on the R1 file or both. 
 
 ## 3.2, prune demultiplexed files based on R1 + R2 number of reads
