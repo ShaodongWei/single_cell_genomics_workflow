@@ -132,7 +132,10 @@ rule reads_percentage_demultiplexed:
         # calculate proportion of demultiplexed compared with raw reads
         sort -k 1 {params.output_dir}/demultiplexed/sample.raw.reads > tmp && mv tmp {params.output_dir}/demultiplexed/sample.raw.reads
         join -1 1 -2 1 {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads | awk '{{print $0,$3/$2}}' \
-            > {params.output_dir}/demultiplexed/raw.percentage.demultiplexed.reads
+            > {params.output_dir}/demultiplexed/demultiplexed.reads.percentage
+
+        # remove intermediate files 
+        rm {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads
 
         touch {output}
         '''
