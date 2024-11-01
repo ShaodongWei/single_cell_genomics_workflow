@@ -137,7 +137,8 @@ count_reads(){
         return 1
     fi
 
-    reads_num=$(bioawk -cfastx '{if (length($seq)>0) sum=sum+1}END{print sum}' $fastx) 
+    #reads_num=$(bioawk -cfastx '{if (length($seq)>0) sum=sum+1}END{print sum}' $fastx) 
+    reads_num=$(grep -c '^@' $fastx) 
     if [[ "$reads_num" -gt 0 ]]; then
         output=$(basename "$fastx")
         echo $output $reads_num
