@@ -24,7 +24,7 @@ This step is to demultiplex your single raw fastq files into barcoded single cel
 snakemake demultiplexing --cores threads_number --use-conda
 ```
 
-## 3.2, prune demultiplexed files based on R1 + R2 number of reads
+## 3.2, prune demultiplexed files based on number of reads (R1 + R2)
 This step is to choose the range of sequence depth, where you can specify minimal reads (leave parameter max_reads empty), maximal reads (leave parameter min_reads empty), or between minimal and maximal reads (specify both min_reads and max_reads). 
 ```
 snakemake prune_sample_by_reads --cores threads_number --use-conda
