@@ -45,20 +45,19 @@ rule demultiplexing:
         
         my_cutadapt --fastq1 {input.fastq1} --fastq2 {input.fastq2} --barcode {params.barcode1} --output_dir {params.output_dir}/demultiplexed/barcode1 --threads {params.threads} --error_rate {params.error_rate} --overlap_minlength {params.overlap_minlength}
         
-        touch {output[0]} # Flag to indicate completion, within curly bracket is python style 
+        touch {output[0]} # Flag to indicate completion
 
         # step 2, demultiplex barcode 2 in parallel, that in each parallel using only 1 thread, 
-        find {params.output_dir}/demultiplexed/barcode1 -type f -name "*-*R1.fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode1.file.size.not.zero.fastq # to skip zero reads files
+        find {params.output_dir}/demultiplexed/barcode1 -type f -name "*-*R1.fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode1.file.size.not.zero # to skip zero reads files
         export -f parallel_cutadapt
         export TMPDIR=/tmp
         parallel -j {params.threads} "parallel_cutadapt --fastq1 {{}} --barcode {params.barcode2} --output_dir {params.output_dir}/demultiplexed/barcode2 --threads 1 --error_rate {params.error_rate} --overlap_minlength {params.overlap_minlength}" :::: {params.output_dir}/demultiplexed/demultiplexed.barcode1.file.size.not.zero.fastq
         touch {output[1]}
 
         # step 3, demultiplex barcode 3 in parallel, that in each parallel using only thread, 
-        find {params.output_dir}/demultiplexed/barcode2 -type f -name "*-*R1.fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode2.file.size.not.zero.fastq # to skip zero reads files
+        find {params.output_dir}/demultiplexed/barcode2 -type f -name "*-*R1.fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode2.file.size.not.zero # to skip zero reads files
         export -f parallel_cutadapt
-        parallel -j {params.threads} "parallel_cutadapt --fastq1 {{}} --barcode {params.barcode3} --output_dir {params.output_dir}/demultiplexed/barcode3 --threads 1 --error_rate {params.error_rate} --overlap_minlength {params.overlap_minlength}" :::: {params.output_dir}/demultiplexed/demultiplexed.barcode2.file.size.not.zero.fastq
-        
+        parallel -j {params.threads} "parallel_cutadapt --fastq1 {{}} --barcode {params.barcode3} --output_dir {params.output_dir}/demultiplexed/barcode3 --threads 1 --error_rate {params.error_rate} --overlap_minlength {params.overlap_minlength}" :::: {params.output_dir}/demultiplexed/demultiplexed.barcode2.file.size.not.zero
         touch {output[2]}
 
         '''
@@ -81,23 +80,23 @@ rule prune_sample_by_reads:
         source {params.functions}
 
         # select non zero fastq files
-        find {params.output_dir}/demultiplexed/barcode3 -type f -name "*-*fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq
+        find {params.output_dir}/demultiplexed/barcode3 -type f -name "*-*fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero
         
         # calculate reads for each fastq file 
         export -f count_reads
-        if [[ -f {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads ]];then 
-            rm {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads;
+        if [[ -f {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads ]];then 
+            rm {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads;
         fi
         export TMPDIR=/tmp
-        parallel -j {params.threads} "count_reads --fastx {{}} >> {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads" \
-            :::: {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq
+        parallel -j {params.threads} "count_reads --fastx {{}} >> {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads" \
+            :::: {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero
         
         # make a new column 'sample'
-        awk '{{split($1,arr,"_");print arr[1],$0}}' {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads > {params.output_dir}/demultiplexed/tmp \
-            && mv {params.output_dir}/demultiplexed/tmp {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads
+        awk '{{split($1,arr,"_");print arr[1],$0}}' {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads > {params.output_dir}/demultiplexed/tmp \
+            && mv {params.output_dir}/demultiplexed/tmp {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads
         
         # prune sample based on R1+R2 reads
-        prune_sample --file {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads --min_reads {params.min_reads} --max_reads {params.max_reads} > {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads.selected
+        prune_sample --file {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads --min_reads {params.min_reads} --max_reads {params.max_reads} > {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads.selected
         
         touch {output}
         '''
@@ -126,7 +125,7 @@ rule reads_percentage_demultiplexed:
         echo -e "{params.fastq1}\n{params.fastq2}" | parallel -j {params.threads} "count_reads --fastx {{}} >> {params.output_dir}/demultiplexed/sample.raw.reads"
 
         # count demultiplexed reads for each file
-        awk '{{split($1,a,"-"); split($2,b,"_"); print a[1]"_"b[2]"\t"$NF}}' {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads \
+        awk '{{split($1,a,"-"); split($2,b,"_"); print a[1]"_"b[2]"\t"$NF}}' {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads \
         |awk '{{arr[$1] += $2}} END {{for (key in arr) print key"\t"arr[key]}}'| sort -k1 > {params.output_dir}/demultiplexed/demultiplexed.reads
 
         # calculate proportion of demultiplexed compared with raw reads
@@ -135,7 +134,7 @@ rule reads_percentage_demultiplexed:
             > {params.output_dir}/demultiplexed/demultiplexed.reads.percentage
 
         # remove intermediate files 
-        rm {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads
+        # rm {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads
 
         touch {output}
         '''
@@ -158,7 +157,7 @@ rule quality_control:
 
         if [[ -f {params.output_dir}/trimmomatic/trimmomatic.log ]]; then rm {params.output_dir}/trimmomatic/trimmomatic.log; fi
         if [[ -f {params.output_dir}/trimmomatic/error.log ]]; then rm {params.output_dir}/trimmomatic/error.log; fi
-        sed -e "s|^|{params.output_dir}/demultiplexed/barcode3/|" -e "s|$|_R1.fastq|" {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.fastq.reads.selected |\
+        sed -e "s|^|{params.output_dir}/demultiplexed/barcode3/|" -e "s|$|_R1.fastq|" {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads.selected |\
             while read -r f1; do
                 f2_file=$(basename $f1|cut -d_ -f1)_R2.fastq
                 dir_path=$(dirname $f1)
@@ -305,6 +304,3 @@ rule depth_coverage:
         
         touch {output}
         '''
-
-
-        
