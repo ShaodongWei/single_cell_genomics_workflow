@@ -1,11 +1,11 @@
-fastq1: "/path/to/KP_R1.fastq" #specify input files 
-fastq2: "/path/to/KP_R2.fastq" 
+fastq1: "/path/to/file_R1.fastq" #specify input files 
+fastq2: "/path/to/file_R2.fastq" 
 output_directory: "/path/to/output" 
-barcode1: "/path/to/barcode/barcode3.fa"
-barcode2: "/path/to/barcode/barcode2.fa"
-barcode3: "/path/to/barcode/barcode1.fa"
+barcode1: "/path/to/barcode3.fa"
+barcode2: "/path/to/barcode2.fa"
+barcode3: "/path/to/barcode1.fa"
 primer: "/path/to/primer.fa"
-reference: "/path/to/KP_fa" # the sample name has to be "_" separated. 
+reference: "/path/to/reference_fa" # the sample name has to be "_" separated. 
 mapper: "kma" # 'kma' or 'bwa-mem'
 
 # threads to use, better to be same as the specified in snakemake 
