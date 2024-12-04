@@ -106,7 +106,6 @@ parallel_cutadapt(){
         $fastq2 $fastq1 >> $output_dir/${barcode_name}.log 2>&1
     }
 
-
 count_reads(){
     # Define a list of software to check
     required_software=("bioawk")
@@ -138,12 +137,17 @@ count_reads(){
     fi
 
     #reads_num=$(bioawk -cfastx '{if (length($seq)>0) sum=sum+1}END{print sum}' $fastx) 
-    reads_num=$(grep -c '^@' $fastx) 
-    if [[ "$reads_num" -gt 0 ]]; then
-        output=$(basename "$fastx")
-        echo $output $reads_num
+    if [[ "$fastx" == *.gz ]]; then
+        # Use gzip and zcat to handle gzipped files
+        reads_num=$(zcat "$fastx" | grep -c '^@')
+    else
+        # Use grep for uncompressed files
+        reads_num=$(grep -c '^@' "$fastx")
     fi
-
+    
+    output=$(basename "$fastx")
+    echo $output $reads_num
+    
 }
 
 prune_sample(){
