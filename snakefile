@@ -130,8 +130,8 @@ rule reads_percentage_demultiplexed:
 
         # calculate proportion of demultiplexed compared with raw reads
         sort -k 1 {params.output_dir}/demultiplexed/sample.raw.reads > tmp && mv tmp {params.output_dir}/demultiplexed/sample.raw.reads
-        awk '{split($1,a,".fastq"); print a[1]"\t"$2}'  {params.output_dir}/demultiplexed/sample.raw.reads > tmp && mv tmp {params.output_dir}/demultiplexed/sample.raw.reads # shorten filename, in case the files are gzipped
-        awk '{split($1,a,".fastq"); print a[1]"\t"$2}'  {params.output_dir}/demultiplexed/demultiplexed.reads > tmp && mv tmp {params.output_dir}/demultiplexed/demultiplexed.reads # shorten filename, in case the file are gzipped
+        awk '{{split($1,a,".fastq"); print a[1]"\t"$2}}'  {params.output_dir}/demultiplexed/sample.raw.reads > tmp && mv tmp {params.output_dir}/demultiplexed/sample.raw.reads # shorten filename, in case the files are gzipped
+        awk '{{split($1,a,".fastq"); print a[1]"\t"$2}}'  {params.output_dir}/demultiplexed/demultiplexed.reads > tmp && mv tmp {params.output_dir}/demultiplexed/demultiplexed.reads # shorten filename, in case the file are gzipped
         join -1 1 -2 1 {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads | awk '{{print $0,$3/$2}}' \
             > {params.output_dir}/demultiplexed/demultiplexed.reads.percentage
 
