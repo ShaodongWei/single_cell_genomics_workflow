@@ -51,7 +51,7 @@ rule demultiplexing:
         find {params.output_dir}/demultiplexed/barcode1 -type f -name "*-*R1.fastq" -size +0 ! -name '*unknown*' > {params.output_dir}/demultiplexed/demultiplexed.barcode1.file.size.not.zero # to skip zero reads files
         export -f parallel_cutadapt
         export TMPDIR=/tmp
-        parallel -j {params.threads} "parallel_cutadapt --fastq1 {{}} --barcode {params.barcode2} --output_dir {params.output_dir}/demultiplexed/barcode2 --threads 1 --error_rate {params.error_rate} --overlap_minlength {params.overlap_minlength}" :::: {params.output_dir}/demultiplexed/demultiplexed.barcode1.file.size.not.zero.fastq
+        parallel -j {params.threads} "parallel_cutadapt --fastq1 {{}} --barcode {params.barcode2} --output_dir {params.output_dir}/demultiplexed/barcode2 --threads 1 --error_rate {params.error_rate} --overlap_minlength {params.overlap_minlength}" :::: {params.output_dir}/demultiplexed/demultiplexed.barcode1.file.size.not.zero
         touch {output[1]}
 
         # step 3, demultiplex barcode 3 in parallel, that in each parallel using only thread, 
