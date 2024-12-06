@@ -1,4 +1,4 @@
-fastq1: "/path/to/file_R1.fastq" #specify input files 
+fastq1: "/path/to/file_R1.fastq" # the sample name has to be "_" separated. 
 fastq2: "/path/to/file_R2.fastq" 
 output_directory: "/path/to/output" 
 barcode1: "/path/to/barcode3.fa"
