@@ -32,7 +32,6 @@ rule demultiplexing:
         "env/demultiplexing.yaml"
     shell:
         '''
-        echo {params.output_dir}
         mkdir -p {params.output_dir}/demultiplexed
         mkdir -p {params.output_dir}/demultiplexed/barcode1
         mkdir -p {params.output_dir}/demultiplexed/barcode2
@@ -117,26 +116,27 @@ rule reads_percentage_demultiplexed:
     shell:
         '''
         source {params.functions}
+        mkdir -p {params.output_dir}/results
 
         # count raw reads
         export -f count_reads
-        if [[ -f {params.output_dir}/demultiplexed/sample.raw.reads ]]; then rm {params.output_dir}/demultiplexed/sample.raw.reads; fi
+        if [[ -f {params.output_dir}/results/sample.raw.reads ]]; then rm {params.output_dir}/results/sample.raw.reads; fi
         export TMPDIR=/tmp # for parallel, temporary files, to avoid the system /etc /scratch where I have read-only permission. 
-        echo -e "{params.fastq1}\n{params.fastq2}" | parallel -j {params.threads} "count_reads --fastx {{}} >> {params.output_dir}/demultiplexed/sample.raw.reads"
+        echo -e "{params.fastq1}\n{params.fastq2}" | parallel -j {params.threads} "count_reads --fastx {{}} >> {params.output_dir}/results/sample.raw.reads"
 
         # count demultiplexed reads for each file
         awk '{{split($1,a,"-"); split($2,b,"_"); print a[1]"_"b[2]"\t"$NF}}' {params.output_dir}/demultiplexed/demultiplexed.barcode3.file.size.not.zero.reads \
-        |awk '{{arr[$1] += $2}} END {{for (key in arr) print key"\t"arr[key]}}'| sort -k1 > {params.output_dir}/demultiplexed/demultiplexed.reads
+        |awk '{{arr[$1] += $2}} END {{for (key in arr) print key"\t"arr[key]}}'| sort -k1 > {params.output_dir}/results/demultiplexed.reads
 
         # calculate proportion of demultiplexed compared with raw reads
-        sort -k 1 {params.output_dir}/demultiplexed/sample.raw.reads > tmp && mv tmp {params.output_dir}/demultiplexed/sample.raw.reads
-        awk '{{split($1,a,".fastq"); print a[1]"\t"$2}}'  {params.output_dir}/demultiplexed/sample.raw.reads > tmp && mv tmp {params.output_dir}/demultiplexed/sample.raw.reads # shorten filename, in case the files are gzipped
-        awk '{{split($1,a,".fastq"); print a[1]"\t"$2}}'  {params.output_dir}/demultiplexed/demultiplexed.reads > tmp && mv tmp {params.output_dir}/demultiplexed/demultiplexed.reads # shorten filename, in case the file are gzipped
-        join -1 1 -2 1 {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads | awk '{{print $0,$3/$2}}' \
-            > {params.output_dir}/demultiplexed/demultiplexed.reads.percentage
+        sort -k 1 {params.output_dir}/results/sample.raw.reads > tmp && mv tmp {params.output_dir}/results/sample.raw.reads
+        awk '{{split($1,a,".fastq"); print a[1]"\t"$2}}'  {params.output_dir}/results/sample.raw.reads > tmp && mv tmp {params.output_dir}/results/sample.raw.reads # shorten filename, in case the files are gzipped
+        awk '{{split($1,a,".fastq"); print a[1]"\t"$2}}'  {params.output_dir}/results/demultiplexed.reads > tmp && mv tmp {params.output_dir}/results/demultiplexed.reads # shorten filename, in case the file are gzipped
+        join -1 1 -2 1 {params.output_dir}/results/sample.raw.reads {params.output_dir}/results/demultiplexed.reads | awk '{{print $0,$3/$2}}' \
+            > {params.output_dir}/results/demultiplexed.reads.percentage
 
         # remove intermediate files 
-        # rm {params.output_dir}/demultiplexed/sample.raw.reads {params.output_dir}/demultiplexed/demultiplexed.reads
+        # rm {params.output_dir}/results/sample.raw.reads {params.output_dir}/results/demultiplexed.reads
 
         touch {output}
         '''
@@ -283,14 +283,14 @@ rule depth_coverage:
         
         # depth for each contig, summing up reads from the same contigs and same position , combine depth for each position from each barcode file
         find {params.output_dir}/depth_coverage/ -type f -name "*.depth.txt" -print0 | xargs -0 cat | awk '{{data[$1" "$2] += $3}} END {{for (key in data) print key, data[key]}}' \
-            > {params.output_dir}/depth_coverage/contigs.depth.each.position.txt
+            > {params.output_dir}/results/contigs.depth.each.position.txt
 
         # coverage for each contig, Calculate the length of reference and store it in a variable 
         ref_length=$( bioawk -cfastx '{{print $name"\t"length($seq)}}' {params.reference}) #when for plasmid, it can be multiple lines 
-        if [[ -f {params.output_dir}/depth_coverage/contigs.coverage.txt ]];then rm {params.output_dir}/depth_coverage/contigs.coverage.txt;fi
+        if [[ -f {params.output_dir}/results/contigs.coverage.txt ]];then rm {params.output_dir}/results/contigs.coverage.txt;fi
         echo "$ref_length" | while read -r line;do
             awk -v ref_length_line="$line" 'BEGIN{{split(ref_length_line, parts, "\t"); total[parts[1]] = parts[2]}} {{if ($3 > 0) {{data[$1] += 1}}}} END \
-                {{for (key in total) {{print key, data[key] / total[key]}}}}' {params.output_dir}/depth_coverage/contigs.depth.each.position.txt >> {params.output_dir}/depth_coverage/contigs.coverage.txt
+                {{for (key in total) {{print key, data[key] / total[key]}}}}' {params.output_dir}/results/contigs.depth.each.position.txt >> {params.output_dir}/results/contigs.coverage.txt
         done
 
         # coverage for each barcode
@@ -301,7 +301,7 @@ rule depth_coverage:
         export TMPDIR=/tmp
         parallel -j {params.threads} "
             #out_file=\$(basename {{}} .depth.txt).coverage.txt;
-            count_coverage --input {{}}  --reference {params.reference} >> {params.output_dir}/depth_coverage/barcode.coverage.txt
+            count_coverage --input {{}}  --reference {params.reference} >> {params.output_dir}/results/barcode.coverage.txt
             " :::: {params.output_dir}/depth_coverage/barcode.depth.not.zero
         
         touch {output}
