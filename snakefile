@@ -274,6 +274,7 @@ rule depth_coverage:
         "env/depth_coverage.yaml" 
     shell:
         r'''
+        mkdir -p {params.output_dir}/results
         mkdir -p {params.output_dir}/depth_coverage
 
         # sequencing depth for non-zero position for each barcode 
