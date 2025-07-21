@@ -1,4 +1,4 @@
-For more detials please go the wiki page [https://github.com/ShaodongWei/single_cell_sequencing_workflow/wiki]
+For more detials please go the [wiki](https://github.com/ShaodongWei/single_cell_sequencing_workflow/wiki) page
 # 1. Run the entire pipeline
 ```
 conda config --set channel_priority flexible # set channel priority to be flexible for conda
